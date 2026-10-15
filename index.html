@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eclipse AI | Incident Command</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: #131b2e;
+  --line: #26344c;
+  --text: #edf3ff;
+  --muted: #9eacc4;
+  --blue: #7da9ff;
+  --green: #55d6a0;
+  --amber: #ffcc66;
+  --red: #ff8088;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 "Segoe UI", Arial, sans-serif;
+}
+header {
+  padding: 24px 5%;
+  border-bottom: 1px solid var(--line);
+  background: #0e1527;
+}
+.brand { color: var(--blue); font-size: 12px; letter-spacing: 3px; }
+h1 { margin: 6px 0; font-size: clamp(25px, 4vw, 36px); }
+.subtitle, .muted { color: var(--muted); }
+main { max-width: 1100px; margin: auto; padding: 24px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.metric { font-size: 27px; font-weight: 700; margin-top: 8px; }
+.label { color: var(--muted); font-size: 13px; }
+h2 { font-size: 17px; margin-top: 0; }
+select, button {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font: inherit;
+}
+select { background: var(--bg); color: var(--text); width: 100%; }
+button {
+  background: var(--blue);
+  color: #071126;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:disabled { opacity: .6; cursor: wait; }
+.controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto;
+  gap: 12px;
+}
+.status { font-weight: 700; }
+.good { color: var(--green); }
+.warn { color: var(--amber); }
+.bad { color: var(--red); }
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #d9e5ff;
+  font: 13px/1.6 Consolas, monospace;
+}
+footer { text-align: center; padding: 24px; color: var(--muted); }
+@media (max-width: 520px) {
+  main { padding: 14px; }
+  .controls { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">ECLIPSE AI / SECURITY OPERATIONS</div>
+  <h1>Incident Command Dashboard</h1>
+  <div class="subtitle">Graph-driven triage · Explainable policy · Safety-gated simulation</div>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="panel">
+      <div class="label">BACKEND</div>
+      <div class="metric" id="health">Checking…</div>
+      <div class="muted">FastAPI service</div>
+    </section>
+    <section class="panel">
+      <div class="label">GRAPH NODES</div>
+      <div class="metric" id="nodes">—</div>
+      <div class="muted" id="graphName">FalkorDB</div>
+    </section>
+    <section class="panel">
+      <div class="label">EXECUTION MODE</div>
+      <div class="metric good">Simulation</div>
+      <div class="muted">No real host actions</div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Analyze an incident</h2>
+    <div class="controls">
+      <select id="incident">
+        <option value="INC-001">INC-001 · High severity · Sandbox</option>
+        <option value="INC-002">INC-002 · Low confidence · Sandbox</option>
+        <option value="INC-003">INC-003 · Production environment</option>
+      </select>
+      <button id="analyze">Run triage</button>
+    </div>
+    <p class="muted" id="message">Choose an incident and run the policy analysis.</p>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="label">POLICY DECISION</div>
+      <div class="metric" id="decision">—</div>
+      <p id="severity" class="muted">Severity: —</p>
+    </section>
+    <section class="panel">
+      <div class="label">PROPOSED ACTION</div>
+      <div class="metric" id="action" style="font-size:20px">—</div>
+      <p class="muted">Proposal only; never executed.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Evidence from the graph</h2>
+    <pre id="evidence">Run triage to load incident evidence.</pre>
+  </section>
+
+  <section class="panel">
+    <h2>Decision explanation</h2>
+    <pre id="explanation">The policy explanation will appear here.</pre>
+  </section>
+
+  <section class="panel">
+    <h2>Reasoning checks</h2>
+    <pre id="reasoning">No analysis yet.</pre>
+  </section>
+</main>
+
+<footer>Eclipse AI · Hackathon prototype · Simulated incidents only</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function loadHealth() {
+  try {
+    const [health, graph] = await Promise.all([
+      fetch("/health").then(r => {
+        if (!r.ok) throw new Error("Health request failed");
+        return r.json();
+      }),
+      fetch("/graph/status").then(r => {
+        if (!r.ok) throw new Error("Graph request failed");
+        return r.json();
+      })
+    ]);
+    $("health").textContent = health.status === "running" ? "Online" : "Unavailable";
+    $("health").className = "metric " + (health.status === "running" ? "good" : "bad");
+    $("nodes").textContent = graph.node_count;
+    $("graphName").textContent = "Graph: " + graph.graph;
+  } catch (err) {
+    $("health").textContent = "Offline";
+    $("health").className = "metric bad";
+    $("message").textContent = "Could not reach the API. Check the server and reload this page.";
+  }
+}
+
+async function analyze() {
+  const button = $("analyze");
+  button.disabled = true;
+  $("message").textContent = "Analyzing incident against graph evidence and policy…";
+
+  try {
+    const response = await fetch("/triage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ incident_id: $("incident").value })
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Triage request failed");
+    }
+
+    const approved = data.policy_decision === "approved_for_simulation";
+    $("decision").textContent = data.policy_decision;
+    $("decision").className = "metric " + (approved ? "good" : "warn");
+    $("severity").textContent = "Severity: " + data.severity;
+    $("action").textContent = data.proposed_action || "No action proposed";
+    $("evidence").textContent = JSON.stringify(data.evidence, null, 2);
+    $("explanation").textContent =
+      (data.reasoning.decision_explanation || []).map(x => "• " + x).join("\n") ||
+      "No explanation returned.";
+    $("reasoning").textContent = JSON.stringify({
+      high_confidence_evidence: data.reasoning.high_confidence_evidence,
+      all_affected_hosts_in_sandbox: data.reasoning.all_affected_hosts_in_sandbox,
+      graph_evidence_count: data.reasoning.graph_evidence_count,
+      execution: data.execution
+    }, null, 2);
+    $("message").textContent =
+      "Analysis complete. Execution status: " + data.execution + ".";
+  } catch (err) {
+    $("message").textContent = "Error: " + err.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+$("analyze").addEventListener("click", analyze);
+loadHealth();
+</script>
+</body>
+</html>
