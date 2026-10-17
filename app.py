@@ -126,6 +126,44 @@ def health():
     return {"service": "Eclipse AI", "status": "running"}
 
 
+@app.get("/graph/explorer")
+def graph_explorer(limit: int = Query(default=80, ge=1, le=150)):
+    """Return real FalkorDB nodes and relationships for the dashboard graph explorer."""
+    try:
+        result = get_graph().query(
+            "MATCH (a)-[r]->(b) RETURN labels(a), properties(a), type(r), labels(b), properties(b) LIMIT $limit",
+            {"limit": limit},
+        )
+        nodes, edges = {}, []
+        def add_node(labels, props):
+            labels, props = labels or ["Node"], props or {}
+            label = str(labels[0]) if labels else "Node"
+            identity = (props.get("id") or props.get("incident_id") or props.get("name")
+                        or props.get("event_id") or props.get("cycle_id"))
+            if identity is None:
+                identity = str(sorted((str(k), str(v)) for k, v in props.items())[:3])
+            node_id = f"{label}:{identity}"
+            if node_id not in nodes:
+                nodes[node_id] = {"id": node_id, "label": label, "title": str(identity),
+                                  "properties": {str(k): v for k, v in props.items()}}
+            return node_id
+        for row in result.result_set:
+            if len(row) >= 5:
+                edges.append({"source": add_node(row[0], row[1]),
+                              "target": add_node(row[3], row[4]), "label": str(row[2])})
+        unique_edges, seen = [], set()
+        for edge in edges:
+            key = (edge["source"], edge["label"], edge["target"])
+            if key not in seen:
+                seen.add(key); unique_edges.append(edge)
+        return {"graph": os.getenv("FALKORDB_GRAPH", "eclipse-ai"),
+                "node_count": len(nodes), "edge_count": len(unique_edges),
+                "nodes": list(nodes.values()), "edges": unique_edges,
+                "simulation_only": True}
+    except Exception:
+        raise HTTPException(status_code=503, detail="Graph explorer data unavailable.")
+
+
 @app.get("/graph/status")
 def graph_status():
     try:
