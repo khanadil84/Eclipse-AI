@@ -1,4 +1,20 @@
 .env
+.env.*
+!.env.example
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Local backups and staged upgrade snapshots (never delete; keep out of git)
+backup_*/
+closedloop_memory_fixed/
+closedloop_memory_upgrade/
+level5_upgrade/
+upgrade_packages/
+app_backup.py
+app_before_*.py
+app_step*_backup.py
+*.backup-*
+EclipseAI_Final_*
+EclipseAI_FINAL_*

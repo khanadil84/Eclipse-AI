@@ -1,0 +1,14 @@
+# Eclipse AI - runtime and test dependencies.
+# Versions verified against the project virtual environment (Python 3.14.3).
+# Transitive dependencies (pydantic-core, redis, starlette, anyio, httpcore,
+# click, h11, pluggy, iniconfig, etc.) are installed automatically by pip.
+
+# --- Runtime ---
+fastapi==0.143.1
+uvicorn==0.54.0
+FalkorDB==1.8.0
+python-dotenv==1.2.4
+
+# --- Tests (required by test_app.py: pytest + FastAPI TestClient transport) ---
+pytest==9.1.1
+httpx==0.28.1
